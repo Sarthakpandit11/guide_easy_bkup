@@ -19,6 +19,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import { AuthProvider } from './context/AuthContext';
+import ManageMessages from './pages/admin/manage-messages';
 
 const App: React.FC = () => {
   return (
@@ -50,7 +51,7 @@ const App: React.FC = () => {
           <Route path="bookings" element={<div>Bookings Management</div>} />
           <Route path="guide-approvals" element={<div>Guide Approvals</div>} />
           <Route path="reports" element={<div>Reports</div>} />
-          <Route path="messages" element={<div>Messages</div>} />
+          <Route path="messages" element={<ManageMessages />} />
           <Route path="guide-verification" element={<GuideVerification />} />
           <Route path="profile" element={<Profile />} />
           <Route path="change-password" element={<ChangePassword />} />
