@@ -43,7 +43,7 @@ const AdminLayout: React.FC = () => {
     { path: '/admin/users', label: 'User Management', icon: <Users size={20} /> },
     { path: '/admin/reports', label: 'Reports & Insights', icon: <BarChart2 size={20} /> },
     { path: '/admin/messages', label: 'Manage Messages', icon: <MessageSquare size={20} /> },
-    { path: '/admin/verify-guides', label: 'Guide Verification', icon: <UserCheck size={20} /> },
+    { path: '/admin/guide-verification', label: 'Guide Verification', icon: <UserCheck size={20} /> },
   ];
 
   return (

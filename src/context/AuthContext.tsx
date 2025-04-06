@@ -5,8 +5,13 @@ import { useNavigate } from 'react-router-dom';
 interface User {
   id: number;
   full_name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   role: string;
+  phone_number?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Define the RegisterData interface
@@ -27,6 +32,7 @@ interface AuthContextType {
   logout: () => void;
   register: (userData: RegisterData) => Promise<void>;
   clearError: () => void;
+  resetPassword: (email: string, newPassword: string) => Promise<void>;
   getDashboardPath: (role: string) => string;
   isAuthenticated: boolean;
 }
@@ -119,6 +125,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const resetPassword = async (email: string, newPassword: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/auth/reset-password.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, newPassword }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password');
+      }
+
+      return data;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred while resetting password');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDashboardPath = (role: string): string => {
     const normalizedRole = role.toLowerCase();
     switch (normalizedRole) {
@@ -156,6 +189,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     logout,
     register,
     clearError,
+    resetPassword,
     getDashboardPath,
     isAuthenticated: !!user,
   };

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Users, Calendar, CheckCircle, TrendingUp, Search, Filter, ArrowUp, ArrowDown } from 'lucide-react';
 import { 
   LineChart, 
@@ -16,6 +16,10 @@ import {
   Cell
 } from 'recharts';
 import { useAuth } from '../../context/AuthContext';
+import DashboardCharts from '../../components/charts/DashboardCharts';
+
+// Lazy load chart components
+const ChartComponents = React.lazy(() => import('../../components/charts/DashboardCharts'));
 
 // Define interfaces for our data structures
 interface Booking {
@@ -42,10 +46,18 @@ interface DashboardData {
   totalBookings: number;
   totalGuides: number;
   totalTourists: number;
+  totalRevenue: number;
   recentBookings: Booking[];
   topGuides: Guide[];
   bookingTrends: { name: string; bookings: number; }[];
   touristsByRegion: RegionData[];
+  latestBookings: {
+    id: number;
+    touristName: string;
+    guideName: string;
+    date: string;
+    status: string;
+  }[];
 }
 
 // Sample data - replace with actual API calls
@@ -105,52 +117,60 @@ const AdminDashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = useState('asc');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [dashboardData, setDashboardData] = useState<DashboardData>({
-    totalUsers: 0,
-    totalBookings: 0,
-    totalGuides: 0,
-    totalTourists: 0,
-    recentBookings: [],
-    topGuides: [],
-    bookingTrends: [],
-    touristsByRegion: []
-  });
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
 
   useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // TODO: Replace with actual API call
+        const mockData: DashboardData = {
+          totalUsers: 1250,
+          totalBookings: 150,
+          totalGuides: 25,
+          totalTourists: 75,
+          totalRevenue: 25000,
+          recentBookings: latestBookings,
+          topGuides: topGuidesData,
+          bookingTrends: bookingTrendData,
+          touristsByRegion: touristsByRegionData,
+          latestBookings: [
+            {
+              id: 1,
+              touristName: 'Alice Cooper',
+              guideName: 'John Doe',
+              date: '2024-03-15',
+              status: 'Confirmed'
+            },
+            {
+              id: 2,
+              touristName: 'Bob Wilson',
+              guideName: 'Jane Smith',
+              date: '2024-03-14',
+              status: 'Pending'
+            },
+            {
+              id: 3,
+              touristName: 'Carol White',
+              guideName: 'Mike Johnson',
+              date: '2024-03-13',
+              status: 'Completed'
+            }
+          ]
+        };
+
+        setDashboardData(mockData);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch dashboard data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
     fetchDashboardData();
   }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Replace with actual API calls
-      // For now, using sample data
-      setDashboardData({
-        totalUsers: 1250,
-        totalBookings: 450,
-        totalGuides: 75,
-        totalTourists: 1175,
-        recentBookings: [
-          { id: 1, tourist: 'John Smith', guide: 'Jane Doe', date: '2023-06-15', status: 'Completed' },
-          { id: 2, tourist: 'Emily Johnson', guide: 'Mike Wilson', date: '2023-06-14', status: 'Pending' },
-          { id: 3, tourist: 'David Brown', guide: 'Sarah Davis', date: '2023-06-13', status: 'Completed' },
-          { id: 4, tourist: 'Lisa Anderson', guide: 'Tom Harris', date: '2023-06-12', status: 'Cancelled' },
-          { id: 5, tourist: 'Robert Taylor', guide: 'Jennifer Lee', date: '2023-06-11', status: 'Completed' },
-        ],
-        topGuides: topGuidesData,
-        bookingTrends: bookingTrendData,
-        touristsByRegion: touristsByRegionData
-      });
-      
-      setIsLoading(false);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-      setError('Failed to load dashboard data. Please try again later.');
-      setIsLoading(false);
-    }
-  };
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -167,17 +187,24 @@ const AdminDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-        <strong className="font-bold">Error!</strong>
-        <span className="block sm:inline"> {error}</span>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-red-500">{error}</div>
+      </div>
+    );
+  }
+
+  if (!dashboardData) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-500">No data available</div>
       </div>
     );
   }
@@ -186,7 +213,7 @@ const AdminDashboard: React.FC = () => {
     <div className="space-y-6">
       <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-          Welcome, {user?.first_name || 'Admin'}!
+          Welcome, {user?.full_name || 'Admin'}!
         </h1>
         <p className="text-gray-600 dark:text-gray-300 mb-6">
           This is your admin dashboard. Here you can manage users, bookings, and monitor system activity.
@@ -262,54 +289,17 @@ const AdminDashboard: React.FC = () => {
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Booking Trends Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Booking Trends</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={dashboardData.bookingTrends}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="bookings" stroke="#8884d8" activeDot={{ r: 8 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-80">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </div>
-
-        {/* Tourists by Region Chart */}
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Tourists by Region</h3>
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={dashboardData.touristsByRegion}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  {dashboardData.touristsByRegion.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
+      }>
+        <DashboardCharts
+          bookingTrends={dashboardData.bookingTrends}
+          touristsByRegion={dashboardData.touristsByRegion}
+          topGuides={dashboardData.topGuides}
+        />
+      </Suspense>
 
       {/* Top Guides Section */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
@@ -473,6 +463,55 @@ const AdminDashboard: React.FC = () => {
                     </td>
                   </tr>
                 ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Latest Bookings */}
+      <div className="mt-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Latest Bookings</h3>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Tourist
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Guide
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {dashboardData.latestBookings.map((booking) => (
+                <tr key={booking.id}>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {booking.touristName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {booking.guideName}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
+                    {new Date(booking.date).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      booking.status === 'Confirmed' ? 'bg-green-100 text-green-800' :
+                      booking.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {booking.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

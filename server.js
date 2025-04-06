@@ -30,28 +30,60 @@ app.use(express.urlencoded({ extended: true }));
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD || '', // Make sure this matches your MySQL root password
   database: process.env.DB_NAME || 'mydatabase',
   port: 3306,
   waitForConnections: true,
   connectionLimit: 10,
-  queueLimit: 0
+  queueLimit: 0,
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 };
 
-console.log('Database configuration:', dbConfig);
+console.log('Database configuration:', {
+  host: dbConfig.host,
+  user: dbConfig.user,
+  database: dbConfig.database,
+  port: dbConfig.port
+});
 
-// Create a connection pool
+// Create a connection pool with error handling
 const pool = mysql.createPool(dbConfig);
 
 // Test database connection
 pool.getConnection()
   .then(connection => {
     console.log('Database connected successfully');
-    connection.release();
+    // Test the connection
+    return connection.query('SELECT 1')
+      .then(() => {
+        console.log('Database connection test successful');
+        connection.release();
+      })
+      .catch(err => {
+        console.error('Database connection test failed:', err);
+        connection.release();
+        throw err;
+      });
   })
   .catch(err => {
     console.error('Error connecting to the database:', err);
+    process.exit(1); // Exit if database connection fails
   });
+
+// Add error handler for the pool
+pool.on('error', (err) => {
+  console.error('Database pool error:', err);
+  if (err.code === 'PROTOCOL_CONNECTION_LOST') {
+    console.error('Database connection was closed.');
+  }
+  if (err.code === 'ER_CON_COUNT_ERROR') {
+    console.error('Database has too many connections.');
+  }
+  if (err.code === 'ECONNREFUSED') {
+    console.error('Database connection was refused.');
+  }
+});
 
 // Health check endpoint
 app.get('/api/health-check', (req, res) => {
